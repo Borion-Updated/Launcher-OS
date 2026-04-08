@@ -721,11 +721,8 @@ void VKRenderer::destroyPipelines() {
 }
 
 void VKRenderer::initMatrices() {
-    this->projectionMatrix = glm::ortho(0.f, static_cast<float>(this->swapchainExtent.width), 0.f, static_cast<float>(this->swapchainExtent.height), 500.f, 0.05f);
+    this->projectionMatrix = glm::orthoRH_ZO(0.f, static_cast<float>(this->swapchainExtent.width), 0.f, static_cast<float>(this->swapchainExtent.height), 500.f, 0.05f);
     this->viewMatrix = glm::mat4{1.f};
-
-    this->projectionMatrix[2][2] = this->projectionMatrix[2][2] * 0.5f;
-    this->projectionMatrix[3][2] = this->projectionMatrix[3][2] * 0.5f + 0.5f;
 }
 
 void VKRenderer::destroyMeshes() {
