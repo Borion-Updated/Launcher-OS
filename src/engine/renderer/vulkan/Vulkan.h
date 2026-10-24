@@ -3,13 +3,13 @@
 #define VK_CHECK(fun, ...) ([&]() { \
         const auto res = Vulkan::fun(__VA_ARGS__); \
         if (res != VK_SUCCESS) \
-            logF("{}: {}", #fun, static_cast<int>(res)); \
+            logF("{}: {}", #fun, string_VkResult(res)); \
     })()
 
 #define VK_CHECK_N(num, fun, ...) ([&]() { \
         const auto res = Vulkan::fun(__VA_ARGS__); \
         if (res != VK_SUCCESS) \
-            logF("{} ({}): {}", #fun, num, static_cast<int>(res)); \
+            logF("{} ({}): {}", #fun, num, string_VkResult(res)); \
     })()
 
 class Vulkan {

@@ -25,8 +25,6 @@
 #include <gdiplus.h>
 #include <shlwapi.h>
 
-#include <battery/embed.hpp>
-
 #include <magic_enum_all.hpp>
 
 #include <spdlog/spdlog.h>
@@ -42,6 +40,9 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
+#include <vulkan/vk_enum_string_helper.h>
 
 #include "include/KHR/khrplatform.h"
 #include "include/glad/glad.h"
+
+#include "resources/resources.h"

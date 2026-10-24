@@ -129,3 +129,28 @@ HICON Utils::convertToHICON(const void* data, const size_t size) {
     Gdiplus::GdiplusShutdown(token);
     return icon;
 }
+
+std::string_view Utils::loadBinary(HMODULE mod, const WORD resourceIndex) {
+    return loadResource(mod, resourceIndex, reinterpret_cast<LPCSTR>(RT_RCDATA));
+}
+
+std::string_view Utils::loadImage(HMODULE mod, const WORD resourceIndex) {
+    return loadResource(mod, resourceIndex, "PNG");
+}
+
+std::string_view Utils::loadResource(HMODULE mod, const WORD resourceIndex, LPCSTR type) {
+    const auto rsrc = FindResourceA(mod, MAKEINTRESOURCEA(resourceIndex), type);
+
+    if (rsrc == nullptr)
+        return {};
+
+    const auto resData = LoadResource(mod, rsrc);
+
+    if (resData == nullptr)
+        return {};
+
+    const auto data = LockResource(resData);
+    const auto size = SizeofResource(mod, rsrc);
+
+    return {static_cast<const char*>(data), size};
+}

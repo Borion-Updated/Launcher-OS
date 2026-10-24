@@ -1,7 +1,9 @@
 #include "Mesh.h"
 
 OGL::Mesh::~Mesh() {
-    this->Mesh::cleanup();
+    glDeleteBuffers(1, &this->vboId);
+    glDeleteBuffers(1, &this->eboId);
+    glDeleteVertexArrays(1, &this->vaoId);
 }
 
 void OGL::Mesh::load(float* vertices, const uint32_t vertexCount, uint16_t* indices, const uint32_t indexCount, const uint8_t vertexSize, const std::bitset<VertexFormats::VertexAttribute::ATTR_COUNT>& enabledAttributes, void* additionalData) {

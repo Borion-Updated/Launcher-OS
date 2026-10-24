@@ -11,7 +11,7 @@ public:
 
     GIF() = default;
     explicit GIF(const std::string& file);
-    GIF(const std::string& name, const b::EmbedInternal::EmbeddedFile& file);
+    GIF(const std::string& name, const std::string_view& file);
 
     [[nodiscard]] int getCurrentFrame();
     [[nodiscard]] int getWidth() const;

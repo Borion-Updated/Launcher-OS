@@ -1,7 +1,8 @@
 #include "VKRenderer.h"
 
-#include "Vulkan.h"
 #include "../../../utils/Logger.h"
+#include "../../../utils/Utils.h"
+#include "Vulkan.h"
 #include "descriptor/DescriptorLayoutBuilder.h"
 #include "descriptor/DescriptorWriter.h"
 #include "pipeline/PipelineUtils.h"
@@ -16,7 +17,8 @@ bool VKRenderer::init() {
 
     Vulkan::loadStatic(this->window);
 
-    this->initInstance();
+    if (!this->initInstance())
+        return false;
 
     Vulkan::loadInstance(this->window, this->instance);
 
@@ -28,6 +30,9 @@ bool VKRenderer::init() {
     Vulkan::loadDevice(this->device);
 
     this->surface = this->window->createVulkanSurface(this->instance, nullptr);
+
+    if (this->surface == VK_NULL_HANDLE)
+        return false;
 
     VkDeviceQueueInfo2 queueInfo{};
     queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
@@ -103,12 +108,7 @@ void VKRenderer::render(const double deltaTime) {
     frame.frameDescriptors.clearPools(this->device);
 
     uint32_t swapchainImageIndex = 0;
-
-#ifdef _M_IX86
-    const auto nextImage = Vulkan::vkAcquireNextImageKHR(this->device, this->swapchain, timeout, frame.swapchainSemaphore, NULL, &swapchainImageIndex);
-#else
-    const auto nextImage = Vulkan::vkAcquireNextImageKHR(this->device, this->swapchain, timeout, frame.swapchainSemaphore, nullptr, &swapchainImageIndex);
-#endif
+    const auto nextImage = Vulkan::vkAcquireNextImageKHR(this->device, this->swapchain, timeout, frame.swapchainSemaphore, VK_NULL_HANDLE, &swapchainImageIndex);
 
     if (nextImage == VK_ERROR_OUT_OF_DATE_KHR) {
         this->resizeRequested = true;
@@ -126,10 +126,10 @@ void VKRenderer::render(const double deltaTime) {
 
     VK_CHECK(vkBeginCommandBuffer, cmd, &beginInfo);
 
-    const VkViewport viewport{0.f, 0.f, static_cast<float>(this->swapchainExtent.width), static_cast<float>(this->swapchainExtent.height), 0.f, 1.f};
+    const VkViewport viewport{.x = 0.f, .y = 0.f, .width = static_cast<float>(this->swapchainExtent.width), .height = static_cast<float>(this->swapchainExtent.height), .minDepth = 0.f, .maxDepth = 1.f};
     Vulkan::vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-    const VkRect2D scissor{{0, 0}, this->swapchainExtent};
+    const VkRect2D scissor{.offset = {.x = 0, .y = 0}, .extent = this->swapchainExtent};
     Vulkan::vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     {
@@ -247,7 +247,7 @@ std::shared_ptr<Mesh> VKRenderer::upload(float* vertices, const uint32_t vertexC
 }
 
 uint32_t VKRenderer::loadTexture(const void* textureData, const size_t textureSize, const uint32_t width, const uint32_t height) {
-    const auto image = this->createImage(textureData, {width, height, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+    const auto image = this->createImage(textureData, {.width = width, .height = height, .depth = 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     const auto id = this->textures.size();
 
@@ -382,7 +382,7 @@ void VKRenderer::uploadMeshRaw(const std::span<VK::Vertex> vertices, const uint1
     VK::BufferUtils::destroyBuffer(this->device, nullptr, staging);
 }
 
-void VKRenderer::initInstance() {
+bool VKRenderer::initInstance() {
     std::vector<const char*> layers{};
 
 #ifndef NDEBUG
@@ -416,7 +416,12 @@ void VKRenderer::initInstance() {
     info.enabledLayerCount = layers.size();
     info.ppEnabledLayerNames = layers.data();
 
-    VK_CHECK(vkCreateInstance, &info, nullptr, &this->instance);
+    const auto res = Vulkan::vkCreateInstance(&info, nullptr, &this->instance);
+
+    if (res != VK_SUCCESS)
+        logF("vkCreateInstance: {}", string_VkResult(res));
+
+    return res == VK_SUCCESS;
 }
 
 void VKRenderer::destroyInstance() const {
@@ -529,7 +534,7 @@ void VKRenderer::destroyDevice() const {
 }
 
 void VKRenderer::initSwapchain(const uint32_t width, const uint32_t height) {
-    this->swapchainExtent = {width, height};
+    this->swapchainExtent = {.width = width, .height = height};
 
     VkSurfaceCapabilitiesKHR capabilities{};
     VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, this->physicalDevice, this->surface, &capabilities);
@@ -622,10 +627,10 @@ void VKRenderer::initDescriptors() {
 
     for (auto& frame : this->frames) {
         std::vector<VK::PoolSizeRatio> frameSizes{
-                {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
-                {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
-                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
-                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4}
+                {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .ratio = 3},
+                {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .ratio = 3},
+                {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .ratio = 3},
+                {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .ratio = 4}
         };
 
         frame.frameDescriptors.init(this->device, 1000, frameSizes);
@@ -684,29 +689,29 @@ void VKRenderer::destroyFrameData() {
 
 void VKRenderer::initPipelines() {
     {
-        const auto vert = b::embed<"shaders/vulkan/position.vert.spv">();
-        const auto frag = b::embed<"shaders/vulkan/position.frag.spv">();
+        const auto vert = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_V);
+        const auto frag = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_F);
 
         this->defaultShaders[0] = Renderer::loadShader(vert, frag, VertexFormats::POSITION);
     }
 
     {
-        const auto vert = b::embed<"shaders/vulkan/position_color.vert.spv">();
-        const auto frag = b::embed<"shaders/vulkan/position_color.frag.spv">();
+        const auto vert = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_COL_V);
+        const auto frag = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_COL_F);
 
         this->defaultShaders[1] = Renderer::loadShader(vert, frag, VertexFormats::POSITION_COLOR);
     }
 
     {
-        const auto vert = b::embed<"shaders/vulkan/position_tex.vert.spv">();
-        const auto frag = b::embed<"shaders/vulkan/position_tex.frag.spv">();
+        const auto vert = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_TEX_V);
+        const auto frag = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_TEX_F);
 
         this->defaultShaders[2] = Renderer::loadShader(vert, frag, VertexFormats::POSITION_TEX);
     }
 
     {
-        const auto vert = b::embed<"shaders/vulkan/position_tex_color.vert.spv">();
-        const auto frag = b::embed<"shaders/vulkan/position_tex_color.frag.spv">();
+        const auto vert = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_TEX_COL_V);
+        const auto frag = Utils::loadBinary(this->hInstance, IDR_SHDR_VK_POS_TEX_COL_F);
 
         this->defaultShaders[3] = Renderer::loadShader(vert, frag, VertexFormats::POSITION_TEX_COLOR);
     }
@@ -876,7 +881,7 @@ void VKRenderer::choosePhysicalDevice() {
     }
 }
 
-VK::BufferedImage VKRenderer::createImage(const VkExtent3D& size, VkFormat format, VkImageUsageFlags usage, bool mipmapped) const {
+VK::BufferedImage VKRenderer::createImage(const VkExtent3D& size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped) const {
     VK::BufferedImage image{};
     image.imageFormat = format;
     image.imageExtent = size;

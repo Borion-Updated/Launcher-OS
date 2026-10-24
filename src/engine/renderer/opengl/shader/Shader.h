@@ -3,7 +3,7 @@
 namespace OGL {
     class Shader {
     public:
-        void load(const b::EmbedInternal::EmbeddedFile& vertexShaderFile, const b::EmbedInternal::EmbeddedFile& fragmentShaderFile, std::span<std::string> attributes);
+        void load(const std::string_view& vertexShaderFile, const std::string_view& fragmentShaderFile, std::span<std::string> attributes);
         void load(const void* vertexShaderData, size_t vertexShaderSize, const void* fragmentShaderData, size_t fragmentShaderSize, std::span<std::string> attributes);
         void cleanup() const;
 

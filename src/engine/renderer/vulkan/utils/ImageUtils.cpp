@@ -27,7 +27,7 @@ void VK::ImageUtils::allocateImage(VkDevice device, VkAllocationCallbacks* cb, c
     const auto createImage = Vulkan::vkCreateImage(device, &createInfo, cb, image);
 
     if (createImage != VK_SUCCESS) {
-        logF("vkCreateImage: {}", magic_enum::enum_name(createImage));
+        logF("vkCreateImage: {}", string_VkResult(createImage));
         return;
     }
 
@@ -60,15 +60,11 @@ void VK::ImageUtils::allocateImage(VkDevice device, VkAllocationCallbacks* cb, c
     const auto allocMem = Vulkan::vkAllocateMemory(device, &allocInfo, cb, memory);
 
     if (allocMem != VK_SUCCESS) {
-        logF("vkAllocateMemory: {}", magic_enum::enum_name(allocMem));
+        logF("vkAllocateMemory: {}", string_VkResult(allocMem));
 
         Vulkan::vkDestroyImage(device, *image, cb);
 
-#ifdef _M_IX86
-        *image = NULL;
-#else
-        *image = nullptr;
-#endif
+        *image = VK_NULL_HANDLE;
         return;
     }
 
@@ -85,25 +81,15 @@ void VK::ImageUtils::allocateImage(VkDevice device, VkAllocationCallbacks* cb, c
     if (bindMem == VK_SUCCESS)
         return;
 
-    logF("vkBindImageMemory2: {}", magic_enum::enum_name(bindMem));
+    logF("vkBindImageMemory2: {}", string_VkResult(bindMem));
 
-#ifdef _M_IX86
-    if (*image != NULL) {
+    if (*image != VK_NULL_HANDLE) {
         Vulkan::vkDestroyImage(device, *image, cb);
-        *image = NULL;
+        *image = VK_NULL_HANDLE;
     }
 
     Vulkan::vkFreeMemory(device, *memory, cb);
-    *memory = NULL;
-#else
-    if (*image != nullptr) {
-        Vulkan::vkDestroyImage(device, *image, cb);
-        *image = nullptr;
-    }
-
-    Vulkan::vkFreeMemory(device, *memory, cb);
-    *memory = nullptr;
-#endif
+    *memory = VK_NULL_HANDLE;
 }
 
 void VK::ImageUtils::transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout, const VkPipelineStageFlags2 srcMask, const VkPipelineStageFlags2 dstMask) {

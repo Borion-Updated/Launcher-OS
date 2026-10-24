@@ -162,7 +162,7 @@ void BorionContext::render(const double deltaTime) {
         const auto dly = dim.y;
 
         constexpr auto range = 0.5f;
-        const auto speed = range * deltaTime * 8.f;
+        const auto speed = range * static_cast<float>(deltaTime) * 8.f;
 
         if (this->isCloseButtonHovered(mousePos)) {
             this->closeCol -= speed;
@@ -253,7 +253,7 @@ bool BorionContext::onRelease(const glm::ivec2& pos, const int button) {
                         logF("Failed to create file open dialog");
                     else {
                         COMDLG_FILTERSPEC spec[] = {
-                            {L"dll", L"*.dll"}
+                            {.pszName = L"dll", .pszSpec = L"*.dll"}
                         };
 
                         (void)dialog->SetFileTypes(_countof(spec), spec);
@@ -303,12 +303,12 @@ void BorionContext::init() {
     if (this->renderer == nullptr)
         return;
 
-    this->background.load(b::embed<"assets/background.png">(), this->renderer);
-    this->banner.load(b::embed<"assets/banner.png">(), this->renderer);
-    this->download.load(b::embed<"assets/download.png">(), this->renderer);
-    this->close.load(b::embed<"assets/close.png">(), this->renderer);
+    this->background.load(Utils::loadImage(this->hInstance, IDR_IMG_BG), this->renderer);
+    this->banner.load(Utils::loadImage(this->hInstance, IDR_IMG_BANNER), this->renderer);
+    this->download.load(Utils::loadImage(this->hInstance, IDR_IMG_DL), this->renderer);
+    this->close.load(Utils::loadImage(this->hInstance, IDR_IMG_CLOSE), this->renderer);
 
-    this->kirby = AnimatedTexture{"kirby", b::embed<"assets/kirby.gif">()};
+    this->kirby = AnimatedTexture{"kirby", Utils::loadBinary(this->hInstance, IDR_IMG_KIRBY)};
     this->kirby.generate(this->renderer);
 }
 

@@ -27,7 +27,7 @@ void VK::BufferUtils::createBuffer(VkDevice device, VkAllocationCallbacks* cb, c
     const auto createBuffer = Vulkan::vkCreateBuffer(device, &createInfo, cb, buffer);
 
     if (createBuffer != VK_SUCCESS) {
-        logF("vkCreateBuffer: {}", magic_enum::enum_name(createBuffer));
+        logF("vkCreateBuffer: {}", string_VkResult(createBuffer));
         return;
     }
 
@@ -66,14 +66,10 @@ void VK::BufferUtils::createBuffer(VkDevice device, VkAllocationCallbacks* cb, c
     const auto allocMem = Vulkan::vkAllocateMemory(device, &allocInfo, cb, memory);
 
     if (allocMem != VK_SUCCESS) {
-        logF("vkAllocateMemory: {}", magic_enum::enum_name(allocMem));
+        logF("vkAllocateMemory: {}", string_VkResult(allocMem));
         Vulkan::vkDestroyBuffer(device, *buffer, cb);
 
-#ifdef _M_IX86
-        *buffer = NULL;
-#else
-        *buffer = nullptr;
-#endif
+        *buffer = VK_NULL_HANDLE;
         return;
     }
 
@@ -90,25 +86,15 @@ void VK::BufferUtils::createBuffer(VkDevice device, VkAllocationCallbacks* cb, c
     if (bindMemory == VK_SUCCESS)
         return;
 
-    logF("vkBindBufferMemory2: {}", magic_enum::enum_name(bindMemory));
+    logF("vkBindBufferMemory2: {}", string_VkResult(bindMemory));
 
-#ifdef _M_IX86
-    if (*buffer != NULL) {
+    if (*buffer != VK_NULL_HANDLE) {
         Vulkan::vkDestroyBuffer(device, *buffer, cb);
-        *buffer = NULL;
+        *buffer = VK_NULL_HANDLE;
     }
 
     Vulkan::vkFreeMemory(device, *memory, cb);
-    *memory = NULL;
-#else
-    if (*buffer != nullptr) {
-        Vulkan::vkDestroyBuffer(device, *buffer, cb);
-        *buffer = nullptr;
-    }
-
-    Vulkan::vkFreeMemory(device, *memory, cb);
-    *memory = nullptr;
-#endif
+    *memory = VK_NULL_HANDLE;
 }
 
 void VK::BufferUtils::createBuffer(VkDevice device, VkAllocationCallbacks* cb, size_t size, VkBufferUsageFlags flags, VkMemoryPropertyFlags memoryFlags, const VkPhysicalDeviceMemoryProperties2& properties, VkBuffer* buffer, VkDeviceMemory* memory) {

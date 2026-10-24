@@ -16,7 +16,7 @@ public:
         glm::vec4 shaderColor{};
     };
 
-    VKRenderer(const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : Renderer(window, context) {}
+    VKRenderer(HINSTANCE hInstance, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : Renderer(hInstance, window, context) {}
 
     bool init() override;
     void exit() override;
@@ -85,7 +85,7 @@ private:
     std::pair<uint32_t, VK::BufferedImage*> missingTexture{};
     std::vector<VK::BufferedImage> textures{};
 
-    void initInstance();
+    bool initInstance();
     void destroyInstance() const;
 
     void initMessenger();

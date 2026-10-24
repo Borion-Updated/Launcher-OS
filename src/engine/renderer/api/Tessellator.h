@@ -5,7 +5,7 @@
 
 class Tessellator {
 public:
-    Tessellator(class Renderer* renderer);
+    explicit Tessellator(class Renderer* renderer);
 
     void begin();
 

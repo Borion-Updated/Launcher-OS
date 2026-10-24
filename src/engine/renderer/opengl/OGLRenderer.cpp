@@ -1,6 +1,7 @@
 #include "OGLRenderer.h"
 
 #include "../../../utils/Logger.h"
+#include "../../../utils/Utils.h"
 #include "tessellation/Mesh.h"
 #include "texture/TextureUtil.h"
 
@@ -69,7 +70,7 @@ uint32_t OGLRenderer::loadShader(const void* vertexShaderData, const size_t vert
 std::shared_ptr<Mesh> OGLRenderer::upload(float* vertices, const uint32_t vertexCount, uint16_t* indices, const uint32_t indexCount, const uint8_t vertexSize, const std::bitset<VertexFormats::VertexAttribute::ATTR_COUNT>& enabledAttributes) {
     auto mesh = std::make_shared<OGL::Mesh>();
 
-    mesh->load(vertices, vertexCount, indices, indexCount, vertexSize, enabledAttributes);
+    mesh->load(vertices, vertexCount, indices, indexCount, vertexSize, enabledAttributes, nullptr);
 
     uint8_t index = 0;
 
@@ -100,7 +101,7 @@ void OGLRenderer::draw(const std::shared_ptr<Mesh> mesh) {
     if (mesh->getShaderId() < this->shaders.size())
         this->shaders[mesh->getShaderId()].bind(this->projectionMatrix, this->viewMatrix, this->stack.top(), this->shaderColor);
 
-    mesh->draw();
+    mesh->draw(nullptr);
 }
 
 void OGLRenderer::draw(const std::shared_ptr<Mesh> mesh, const uint32_t texId) {
@@ -112,16 +113,16 @@ void OGLRenderer::draw(const std::shared_ptr<Mesh> mesh, const uint32_t texId) {
     if (mesh->getShaderId() < this->shaders.size())
         this->shaders[mesh->getShaderId()].bind(this->projectionMatrix, this->viewMatrix, this->stack.top(), this->shaderColor, texture);
 
-    mesh->draw();
+    mesh->draw(nullptr);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void OGLRenderer::loadShaders() {
-    this->defaultShaders[0] = Renderer::loadShader(b::embed<"shaders/opengl/position.vsh">(), b::embed<"shaders/opengl/position.fsh">(), VertexFormats::POSITION);
-    this->defaultShaders[1] = Renderer::loadShader(b::embed<"shaders/opengl/position_color.vsh">(), b::embed<"shaders/opengl/position_color.fsh">(), VertexFormats::POSITION_COLOR);
-    this->defaultShaders[2] = Renderer::loadShader(b::embed<"shaders/opengl/position_tex.vsh">(), b::embed<"shaders/opengl/position_tex.fsh">(), VertexFormats::POSITION_TEX);
-    this->defaultShaders[3] = Renderer::loadShader(b::embed<"shaders/opengl/position_tex_color.vsh">(), b::embed<"shaders/opengl/position_tex_color.fsh">(), VertexFormats::POSITION_TEX_COLOR);
+    this->defaultShaders[0] = Renderer::loadShader(Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_V), Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_F), VertexFormats::POSITION);
+    this->defaultShaders[1] = Renderer::loadShader(Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_COL_V), Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_COL_F), VertexFormats::POSITION_COLOR);
+    this->defaultShaders[2] = Renderer::loadShader(Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_TEX_V), Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_TEX_F), VertexFormats::POSITION_TEX);
+    this->defaultShaders[3] = Renderer::loadShader(Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_TEX_COL_V), Utils::loadBinary(this->hInstance, IDR_SHDR_GL_POS_TEX_COL_F), VertexFormats::POSITION_TEX_COLOR);
 }
 
 void OGLRenderer::cleanupShaders() {

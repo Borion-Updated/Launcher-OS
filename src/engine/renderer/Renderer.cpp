@@ -5,12 +5,12 @@
 #include "utils/stb_image.h"
 #include "vulkan/VKRenderer.h"
 
-std::shared_ptr<Renderer> Renderer::create(const Type type, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) {
+std::shared_ptr<Renderer> Renderer::create(HINSTANCE hInstance, const Type type, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) {
     switch (type) {
     case Type::OpenGL:
-        return std::make_shared<OGLRenderer>(window, context);
+        return std::make_shared<OGLRenderer>(hInstance, window, context);
     case Type::Vulkan:
-        return std::make_shared<VKRenderer>(window, context);
+        return std::make_shared<VKRenderer>(hInstance, window, context);
     default:
         std::cerr << "Reached impossible case" << std::endl;
         logF("No renderer");
@@ -26,11 +26,11 @@ void Renderer::setShaderColor(const glm::vec4& color) {
     this->shaderColor = color;
 }
 
-uint32_t Renderer::loadShader(const b::EmbedInternal::EmbeddedFile& vertexShaderFile, const b::EmbedInternal::EmbeddedFile& fragmentShaderFile, const std::span<std::string> attributes) {
+uint32_t Renderer::loadShader(const std::string_view& vertexShaderFile, const std::string_view& fragmentShaderFile, const std::span<std::string> attributes) {
     return this->loadShader(vertexShaderFile.data(), vertexShaderFile.size(), fragmentShaderFile.data(), fragmentShaderFile.size(), attributes);
 }
 
-uint32_t Renderer::loadTexture(const b::EmbedInternal::EmbeddedFile& imageFile, uint32_t* width, uint32_t* height) {
+uint32_t Renderer::loadTexture(const std::string_view& imageFile, uint32_t* width, uint32_t* height) {
     return this->loadTexture(imageFile.data(), imageFile.size(), width, height);
 }
 

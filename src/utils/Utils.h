@@ -30,4 +30,8 @@ public:
     }
 
     static HICON convertToHICON(const void* data, size_t size);
+
+    static std::string_view loadBinary(HMODULE mod, WORD resourceIndex);
+    static std::string_view loadImage(HMODULE mod, WORD resourceIndex);
+    static std::string_view loadResource(HMODULE mod, WORD resourceIndex, LPCSTR type);
 };

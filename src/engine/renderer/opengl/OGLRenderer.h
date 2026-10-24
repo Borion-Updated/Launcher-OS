@@ -5,7 +5,7 @@
 
 class OGLRenderer : public Renderer {
 public:
-    OGLRenderer(const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : Renderer(window, context) {}
+    OGLRenderer(HINSTANCE hInstance, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : Renderer(hInstance, window, context) {}
 
     bool init() override;
     void exit() override;

@@ -2,7 +2,7 @@
 
 #include "ShaderUtil.h"
 
-void OGL::Shader::load(const b::EmbedInternal::EmbeddedFile& vertexShaderFile, const b::EmbedInternal::EmbeddedFile& fragmentShaderFile, const std::span<std::string> attributes) {
+void OGL::Shader::load(const std::string_view& vertexShaderFile, const std::string_view& fragmentShaderFile, const std::span<std::string> attributes) {
     this->load(vertexShaderFile.data(), vertexShaderFile.size(), fragmentShaderFile.data(), fragmentShaderFile.size(), attributes);
 }
 

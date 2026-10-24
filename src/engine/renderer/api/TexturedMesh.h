@@ -4,7 +4,7 @@
 
 class TexturedMesh {
 public:
-    void load(const b::EmbedInternal::EmbeddedFile& imageFile, const std::shared_ptr<class Renderer>& renderer);
+    void load(const std::string_view& imageFile, const std::shared_ptr<class Renderer>& renderer);
     void load(const void* imageData, size_t imageSize, const std::shared_ptr<Renderer>& renderer);
 
     void cleanup();

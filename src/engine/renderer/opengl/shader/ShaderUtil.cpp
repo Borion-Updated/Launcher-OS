@@ -19,7 +19,6 @@ GLuint OGL::ShaderUtil::loadShader(const void* data, const size_t dataSize, cons
         glGetShaderInfoLog(shaderId, l, &l, infoLog.data());
 
         logF("Failed to compile shader: {}", infoLog.data());
-        std::cerr << "Failed to compile shader: " << infoLog.data() << std::endl;
     }
 
     return shaderId;
@@ -38,6 +37,5 @@ void OGL::ShaderUtil::attachAndLinkProgram(const GLuint vertexShaderId, const GL
         glGetProgramInfoLog(programId, length, &length, infoLog.data());
 
         logF("Failed to link program: {}", infoLog.data());
-        std::cerr << "Failed to link program: " << infoLog.data() << std::endl;
     }
 }

@@ -2,7 +2,7 @@
 
 #include "../Renderer.h"
 
-void TexturedMesh::load(const b::EmbedInternal::EmbeddedFile& imageFile, const std::shared_ptr<Renderer>& renderer) {
+void TexturedMesh::load(const std::string_view& imageFile, const std::shared_ptr<Renderer>& renderer) {
     this->load(imageFile.data(), imageFile.size(), renderer);
 }
 

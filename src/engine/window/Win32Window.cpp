@@ -70,18 +70,14 @@ bool Win32Window::create(HINSTANCE hInstance) {
     requestedQuit = false;
     instance = this;
 
-    const auto icon = b::embed<"assets/icon.png">();
+    const auto icon = Utils::loadImage(hInstance, IDR_IMG_ICON);
     const auto hIcon = Utils::convertToHICON(icon.data(), icon.size());
 
     this->hInstance = hInstance;
 
     this->windowClass.cbSize = sizeof(WNDCLASSEX);
     this->windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
-#ifdef _M_IX86
-    this->windowClass.lpfnWndProc = reinterpret_cast<WNDPROC>(windowProc);
-#else
     this->windowClass.lpfnWndProc = windowProc;
-#endif
     this->windowClass.cbClsExtra = 0;
     this->windowClass.cbWndExtra = 0;
     this->windowClass.hInstance = hInstance;
@@ -451,7 +447,7 @@ void Win32Window::createFakeGLContext() const {
 static bool clicked = false;
 static POINT posDiff{};
 
-LRESULT Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_SIZE: {
             if (wParam == SIZE_MINIMIZED)

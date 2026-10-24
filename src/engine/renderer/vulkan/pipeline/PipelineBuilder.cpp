@@ -152,7 +152,7 @@ VkPipeline VK::PipelineBuilder::buildPipeline(VkDevice device) const {
 
     VkPipeline pipeline;
     if (const auto result = Vulkan::vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline); result != VK_SUCCESS) {
-        logF("vkCreateGraphicsPipelines: {}", magic_enum::enum_name(result));
+        logF("vkCreateGraphicsPipelines: {}", string_VkResult(result));
         return VK_NULL_HANDLE;
     }
 

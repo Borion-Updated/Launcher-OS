@@ -40,5 +40,5 @@ private:
 
     void createFakeGLContext() const;
 
-    static LRESULT windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT WINAPI windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 };

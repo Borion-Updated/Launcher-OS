@@ -12,9 +12,9 @@ public:
         Vulkan
     };
 
-    static std::shared_ptr<Renderer> create(Type type, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context);
+    static std::shared_ptr<Renderer> create(HINSTANCE hInstance, Type type, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context);
 
-    Renderer(const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : window(window), context(context) {}
+    Renderer(HINSTANCE hInstance, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : hInstance(hInstance), window(window), context(context) {}
 
     virtual ~Renderer() = default;
     virtual bool init() = 0;
@@ -29,14 +29,16 @@ public:
 
     void setShaderColor(float r, float g, float b, float a = 1.f);
     void setShaderColor(const glm::vec4& color = {1.f, 1.f, 1.f, 1.f});
-    uint32_t loadShader(const b::EmbedInternal::EmbeddedFile& vertexShaderFile, const b::EmbedInternal::EmbeddedFile& fragmentShaderFile, std::span<std::string> attributes);
-    uint32_t loadTexture(const b::EmbedInternal::EmbeddedFile& imageFile, uint32_t* width, uint32_t* height);
+    uint32_t loadShader(const std::string_view& vertexShaderFile, const std::string_view& fragmentShaderFile, std::span<std::string> attributes);
+    uint32_t loadTexture(const std::string_view& imageFile, uint32_t* width, uint32_t* height);
     uint32_t loadTexture(const void* imageData, size_t imageSize, uint32_t* width, uint32_t* height);
     std::shared_ptr<RendererContext> getContext();
     std::shared_ptr<Tessellator> getTessellator();
     MatrixStack& getModelMatrix();
 
 protected:
+    HINSTANCE hInstance{};
+
     std::shared_ptr<Win32Window> window{};
     std::shared_ptr<RendererContext> context{};
     std::shared_ptr<Tessellator> tessellator{};

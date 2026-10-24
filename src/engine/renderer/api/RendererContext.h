@@ -2,7 +2,7 @@
 
 class RendererContext {
 public:
-    explicit RendererContext(const std::shared_ptr<class Win32Window>& window) : window(window) {}
+    RendererContext(HINSTANCE hInstance, const std::shared_ptr<class Win32Window>& window) : hInstance(hInstance), window(window) {}
 
     virtual ~RendererContext() = default;
     virtual void init() = 0;
@@ -15,6 +15,8 @@ public:
     void setRenderer(const std::shared_ptr<class Renderer>& renderer);
 
 protected:
+    HINSTANCE hInstance{};
+
     std::shared_ptr<Win32Window> window{};
     std::shared_ptr<Renderer> renderer{};
 };

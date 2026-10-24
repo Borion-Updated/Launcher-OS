@@ -1,21 +1,15 @@
 include(FetchContent)
 
 FetchContent_Declare(
-        embed
-        GIT_REPOSITORY https://github.com/batterycenter/embed.git
-        GIT_TAG 465081903d97ff1ed05e1fd5d0b3c8032a4a26a6
-)
-
-FetchContent_Declare(
         glm
         GIT_REPOSITORY https://github.com/g-truc/glm.git
-        GIT_TAG e7970a8b26732f1b0df9690f7180546f8c30e48e
+        GIT_TAG 6f14f4792a0cde5d0cf2c910506724d61cb95834
 )
 
 FetchContent_Declare(
         spdlog
         GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG f1d748e5e3edfa4b1778edea003bac94781bc7b7
+        GIT_TAG 6d9805df3f588402b17073dcd13eb569ceda864d
 )
 
 FetchContent_Declare(
@@ -31,7 +25,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(
-        embed
         glm
         spdlog
         magic_enum

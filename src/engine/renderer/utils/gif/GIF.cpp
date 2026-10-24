@@ -29,7 +29,7 @@ GIF::GIF(const std::string& file) {
             auto data = std::make_unique<uint8_t[]>(this->width * this->height * 4);
             memcpy(data.get(), framePixels, this->width * this->height * 4);
 
-            this->frameData[f] = {PixelBlob{std::move(data), static_cast<size_t>(this->width * this->height * 4)}, frame.duration().milliseconds()};
+            this->frameData[f] = {PixelBlob{.data = std::move(data), .size = static_cast<size_t>(this->width * this->height * 4)}, frame.duration().milliseconds()};
 
             f++;
         }
@@ -42,7 +42,7 @@ GIF::GIF(const std::string& file) {
     }
 }
 
-GIF::GIF(const std::string& name, const b::EmbedInternal::EmbeddedFile& file) {
+GIF::GIF(const std::string& name, const std::string_view& file) {
     this->name = name;
 
     try {
@@ -60,7 +60,7 @@ GIF::GIF(const std::string& name, const b::EmbedInternal::EmbeddedFile& file) {
             auto data = std::make_unique<uint8_t[]>(this->width * this->height * 4);
             memcpy(data.get(), framePixels, this->width * this->height * 4);
 
-            this->frameData[f] = {PixelBlob{std::move(data), static_cast<size_t>(this->width * this->height * 4)}, frame.duration().milliseconds()};
+            this->frameData[f] = {PixelBlob{.data = std::move(data), .size = static_cast<size_t>(this->width * this->height * 4)}, frame.duration().milliseconds()};
 
             f++;
         }

@@ -8,7 +8,7 @@ class AnimatedTexture : public GIF {
 public:
     AnimatedTexture() : GIF() {}
     explicit AnimatedTexture(const std::string& file) : GIF(file) {}
-    AnimatedTexture(const std::string& name, const b::EmbedInternal::EmbeddedFile& file) : GIF(name, file) {}
+    AnimatedTexture(const std::string& name, const std::string_view& file) : GIF(name, file) {}
 
     void generate(const std::shared_ptr<Renderer>& renderer);
     void cleanup();
