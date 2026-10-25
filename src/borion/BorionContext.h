@@ -6,7 +6,7 @@
 
 class BorionContext : public RendererContext {
 public:
-    BorionContext(HINSTANCE hInstance, const std::shared_ptr<Win32Window>& window) : RendererContext(hInstance, window) {}
+    explicit BorionContext(HINSTANCE hInstance) : RendererContext(hInstance) {}
 
     void init() override;
     void exit() override;

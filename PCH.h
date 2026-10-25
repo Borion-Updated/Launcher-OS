@@ -33,6 +33,8 @@
 
 #include <gif_lib.h>
 
+#include <d3d9.h>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -44,5 +46,6 @@
 
 #include "include/KHR/khrplatform.h"
 #include "include/glad/glad.h"
+#include "include/winfuncs/WinFuncs.h"
 
 #include "resources/resources.h"

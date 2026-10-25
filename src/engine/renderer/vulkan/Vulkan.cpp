@@ -107,11 +107,11 @@ static PFN_vkCmdDrawIndexed FvkCmdDrawIndexed = nullptr;
 #define GET_INSTANCE_KHR(fun) F##fun = reinterpret_cast<PFN_##fun>(window->getVulkanInstanceFunctionKHR(#fun))
 #define GET_DEVICE(dev, fun) F##fun = reinterpret_cast<PFN_##fun>(vkGetDeviceProcAddr(dev, #fun))
 
-void Vulkan::loadStatic(const std::shared_ptr<Win32Window>& window) {
+void Vulkan::loadStatic(Win32Window* window) {
     GET_INSTANCE(nullptr, vkCreateInstance);
 }
 
-void Vulkan::loadInstance(const std::shared_ptr<Win32Window>& window, VkInstance instance) {
+void Vulkan::loadInstance(Win32Window* window, VkInstance instance) {
     GET_INSTANCE(instance, vkDestroyInstance);
     GET_INSTANCE(instance, vkCreateDebugUtilsMessengerEXT);
     GET_INSTANCE(instance, vkDestroyDebugUtilsMessengerEXT);

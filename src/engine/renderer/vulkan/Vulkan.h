@@ -14,8 +14,8 @@
 
 class Vulkan {
 public:
-    static void loadStatic(const std::shared_ptr<class Win32Window>& window);
-    static void loadInstance(const std::shared_ptr<Win32Window>& window, VkInstance instance);
+    static void loadStatic(class Win32Window* window);
+    static void loadInstance(Win32Window* window, VkInstance instance);
     static void loadDevice(VkDevice device);
 
     static VkResult vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance);

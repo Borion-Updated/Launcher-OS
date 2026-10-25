@@ -2,6 +2,7 @@
 
 #include "../../../utils/Logger.h"
 #include "../../../utils/Utils.h"
+#include "../../window/Win32Window.h"
 #include "Vulkan.h"
 #include "descriptor/DescriptorLayoutBuilder.h"
 #include "descriptor/DescriptorWriter.h"
@@ -207,8 +208,8 @@ void VKRenderer::render(const double deltaTime) {
         this->frameNumber = 0;
 }
 
-Renderer::Type VKRenderer::getRendererType() {
-    return Type::Vulkan;
+RendererType VKRenderer::getRendererType() {
+    return RendererType::Vulkan;
 }
 
 uint32_t VKRenderer::loadShader(const void* vertexShaderData, const size_t vertexShaderSize, const void* fragmentShaderData, const size_t fragmentShaderSize, std::span<std::string> attributes) {

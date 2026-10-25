@@ -17,6 +17,7 @@ public:
     static std::wstring convertToWString(const std::string& str);
 
     static std::string readBin(const std::wstring& path);
+    static void writeBin(const std::wstring& path, const void* data, size_t size);
 
     static void createFile(const std::wstring& path);
 

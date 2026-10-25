@@ -6,74 +6,61 @@
 #include "../renderer/Renderer.h"
 #include "../renderer/vulkan/Vulkan.h"
 
-HMODULE glMod = nullptr;
-
-using wglGetProcAddress_t = void*(*)(const char*);
-static wglGetProcAddress_t FwglGetProcAddress = nullptr;
-
-using wglCreateContext_t = HGLRC(*)(HDC);
-static wglCreateContext_t FwglCreateContext = nullptr;
-
-using wglDeleteContext_t = BOOL(*)(HGLRC);
-static wglDeleteContext_t FwglDeleteContext = nullptr;
-
-using wglMakeCurrent_t = BOOL(*)(HDC, HGLRC);
-static wglMakeCurrent_t FwglMakeCurrent = nullptr;
-
-using wglChoosePixelFormatARB_t = BOOL(*)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
-static wglChoosePixelFormatARB_t FwglChoosePixelFormatARB = nullptr;
-
-using wglCreateContextAttribsARB_t = HGLRC(*)(HDC, HGLRC, const int*);
-static wglCreateContextAttribsARB_t FwglCreateContextAttribsARB = nullptr;
-
-using wglSwapIntervalEXT_t = BOOL(*)(int);
-static wglSwapIntervalEXT_t FwglSwapIntervalEXT = nullptr;
-
-#define GET_WGL_FUN(dl, name) F##name = reinterpret_cast<name##_t>(GetProcAddress(dl, #name))
-#define GET_WGL_PROC(name) F##name = reinterpret_cast<name##_t>(FwglGetProcAddress(#name))
-
-#define WGL_DRAW_TO_WINDOW_ARB            0x2001
-#define WGL_SUPPORT_OPENGL_ARB            0x2010
-#define WGL_DOUBLE_BUFFER_ARB             0x2011
-#define WGL_PIXEL_TYPE_ARB                0x2013
-#define WGL_TYPE_RGBA_ARB                 0x202B
-#define WGL_ACCELERATION_ARB              0x2003
-#define WGL_FULL_ACCELERATION_ARB         0x2027
-#define WGL_COLOR_BITS_ARB                0x2014
-#define WGL_ALPHA_BITS_ARB                0x201B
-#define WGL_DEPTH_BITS_ARB                0x2022
-#define WGL_CONTEXT_MAJOR_VERSION_ARB     0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB     0x2092
-#define WGL_CONTEXT_PROFILE_MASK_ARB      0x9126
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB  0x0001
-#define WGL_SWAP_METHOD_ARB               0x2007
-#define WGL_SWAP_COPY_ARB                 0x2029
-
-static bool iconified = false;
-static bool requestedQuit = false;
-static Win32Window* instance = nullptr;
-
-Win32Window::Win32Window(const std::string& name) {
-    this->wname = Utils::convertToWString(name);
+Win32Window::Win32Window(const std::wstring& name) {
+    this->wname = name;
 }
 
-bool Win32Window::create(HINSTANCE hInstance) {
-    if (this->renderer == nullptr) {
-        logF("Renderer not set! Aborting");
-        std::abort();
+bool Win32Window::execute(HINSTANCE hInstance, const std::shared_ptr<RendererContext>& rendererContext) {
+    const auto lastRenderer = Utils::readBin(Utils::getLauncherFolder() + L"renderer.bin");
+
+    const auto maxRendererEx = lastRenderer.empty() ? magic_enum::enum_integer(RendererType::Count) : std::clamp(static_cast<uint8_t>(lastRenderer[0] + 1), uint8_t{1}, magic_enum::enum_integer(RendererType::Count));
+
+    for (uint8_t i = 0; i < maxRendererEx; i++) {
+        if (this->create(hInstance, magic_enum::enum_cast<RendererType>(maxRendererEx - 1 - i).value(), rendererContext))
+            break;
+
+        this->destroy();
     }
 
+    if (this->hwnd == nullptr)
+        return false;
+
+    const auto type = this->renderer->getRendererType();
+
+    Utils::writeBin(Utils::getLauncherFolder() + L"renderer.bin", &type, sizeof(RendererType));
+
+    this->show();
+
+    this->run();
+
+    this->destroy();
+
+    return true;
+}
+
+bool Win32Window::create(HINSTANCE hInstance, RendererType rendererType, const std::shared_ptr<RendererContext>& rendererContext) {
+    return this->create(hInstance, Renderer::create(hInstance, rendererType, this, rendererContext), rendererContext);
+}
+
+bool Win32Window::create(HINSTANCE hInstance, const std::shared_ptr<Renderer>& renderer, const std::shared_ptr<RendererContext>& rendererContext) {
     if (this->hwnd != nullptr)
         return false;
 
-    iconified = false;
-    requestedQuit = false;
-    instance = this;
+    WF::User32::init();
+    WF::DWM::init();
+
+    this->iconified = false;
+    this->requestedQuit = false;
 
     const auto icon = Utils::loadImage(hInstance, IDR_IMG_ICON);
     const auto hIcon = Utils::convertToHICON(icon.data(), icon.size());
 
     this->hInstance = hInstance;
+    this->renderer = renderer;
+    this->rendererContext = rendererContext;
+
+    rendererContext->setWindow(this);
+    rendererContext->setRenderer(renderer);
 
     this->windowClass.cbSize = sizeof(WNDCLASSEX);
     this->windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
@@ -82,7 +69,7 @@ bool Win32Window::create(HINSTANCE hInstance) {
     this->windowClass.cbWndExtra = 0;
     this->windowClass.hInstance = hInstance;
     this->windowClass.hIcon = hIcon;
-    this->windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    this->windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
     this->windowClass.hbrBackground = nullptr;
     this->windowClass.lpszMenuName = nullptr;
     this->windowClass.lpszClassName = this->wname.c_str();
@@ -92,7 +79,7 @@ bool Win32Window::create(HINSTANCE hInstance) {
         const auto lastError = GetLastError();
 
         logF("Failed to register class: {}", lastError);
-        std::abort();
+        return false;
     }
 
     const int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
@@ -101,45 +88,29 @@ bool Win32Window::create(HINSTANCE hInstance) {
     constexpr int width = 854;
     constexpr int height = 480;
 
+    const auto fSize = this->getAdjustedWindowSize(width, height);
+
     this->hwnd = CreateWindowExW(WS_EX_LAYERED, this->windowClass.lpszClassName, this->wname.c_str(), WS_POPUP,
-        (screenWidth - width) / 2, (screenHeight - height) / 2, width, height, nullptr, nullptr, this->hInstance, nullptr);
+        (screenWidth - fSize.x) / 2, (screenHeight - fSize.y) / 2, fSize.x, fSize.y, nullptr, nullptr, this->hInstance, nullptr);
 
     if (this->hwnd == nullptr) {
         const auto lastError = GetLastError();
 
         logF("Failed to create window: {}", lastError);
-        std::abort();
+        return false;
     }
 
-    (void)SetLayeredWindowAttributes(this->hwnd, 0, 255, LWA_ALPHA);
+    (void)SetWindowLongPtrW(this->hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
-    constexpr MARGINS margins = { -1 };
-    (void)DwmExtendFrameIntoClientArea(this->hwnd, &margins);
+    (void)WF::User32::SetLayeredWindowAttributes(this->hwnd, 0, 255, LWA_ALPHA);
+
+    constexpr MARGINS margins = {.cxLeftWidth = -1};
+    (void)WF::DWM::DwmExtendFrameIntoClientArea(this->hwnd, &margins);
 
     const auto rendererType = this->renderer->getRendererType();
 
-    if (rendererType == Renderer::Type::OpenGL) {
-        this->openGLDLL = LoadLibraryW(L"opengl32.dll");
-
-        if (this->openGLDLL == nullptr) {
-            const auto lastError = GetLastError();
-
-            logF("Failed to load OpenGL DLL: {}", lastError);
-            std::abort();
-        }
-
-        glMod = this->openGLDLL;
-        GET_WGL_FUN(this->openGLDLL, wglGetProcAddress);
-        GET_WGL_FUN(this->openGLDLL, wglCreateContext);
-        GET_WGL_FUN(this->openGLDLL, wglDeleteContext);
-        GET_WGL_FUN(this->openGLDLL, wglMakeCurrent);
-
-        if (FwglGetProcAddress == nullptr || FwglCreateContext == nullptr || FwglDeleteContext == nullptr || FwglMakeCurrent == nullptr) {
-            logF("Failed to load Windows OpenGL functions");
-            std::abort();
-        }
-
-        this->createFakeGLContext();
+    if (rendererType == RendererType::OpenGL) {
+        WF::OGL::init();
 
         this->hdc = GetDC(this->hwnd);
 
@@ -158,21 +129,26 @@ bool Win32Window::create(HINSTANCE hInstance) {
 
         int pixelFormat;
         UINT numFormats;
-        if (FwglChoosePixelFormatARB(this->hdc, pixelAttribs, nullptr, 1, &pixelFormat, &numFormats) != TRUE) {
+        if (WF::OGL::wglChoosePixelFormatARB(this->hdc, pixelAttribs, nullptr, 1, &pixelFormat, &numFormats) != TRUE) {
             const auto lastError = GetLastError();
 
             logF("Failed to choose pixel format: {}", lastError);
-            std::abort();
+            return false;
         }
 
         PIXELFORMATDESCRIPTOR pfd{};
-        (void)DescribePixelFormat(this->hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+        if (WF::GDI::DescribePixelFormat(this->hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pfd) == 0) {
+            const auto lastError = GetLastError();
 
-        if (SetPixelFormat(this->hdc, pixelFormat, &pfd) != TRUE) {
+            logF("Failed to describe pixel format: {}", lastError);
+            return false;
+        }
+
+        if (WF::GDI::SetPixelFormat(this->hdc, pixelFormat, &pfd) != TRUE) {
             const auto lastError = GetLastError();
 
             logF("Failed to set pixel format: {}", lastError);
-            std::abort();
+            return false;
         }
 
         const int contextAttributes[] = {
@@ -182,13 +158,12 @@ bool Win32Window::create(HINSTANCE hInstance) {
             0
         };
 
-        this->hglrc = FwglCreateContextAttribsARB(this->hdc, nullptr, contextAttributes);
+        this->hglrc = WF::OGL::wglCreateContextAttribsARB(this->hdc, nullptr, contextAttributes);
 
-        (void)FwglMakeCurrent(this->hdc, this->hglrc);
-
-        (void)FwglSwapIntervalEXT(1);
+        (void)WF::OGL::wglMakeCurrent(this->hdc, this->hglrc);
+        (void)WF::OGL::wglSwapIntervalEXT(1);
     }
-    else if (rendererType == Renderer::Type::Vulkan) {
+    else if (rendererType == RendererType::Vulkan) {
         this->vulkanDLL = LoadLibraryW(L"vulkan-1.dll");
 
         if (this->vulkanDLL == nullptr)
@@ -204,10 +179,10 @@ void Win32Window::destroy() {
 
     const auto rendererType = this->renderer->getRendererType();
 
-    if (rendererType == Renderer::Type::OpenGL) {
-        (void)FwglMakeCurrent(nullptr, nullptr);
+    if (rendererType == RendererType::OpenGL) {
+        (void)WF::OGL::wglMakeCurrent(nullptr, nullptr);
         (void)ReleaseDC(this->hwnd, this->hdc);
-        (void)FwglDeleteContext(this->hglrc);
+        (void)WF::OGL::wglDeleteContext(this->hglrc);
     }
 
     this->renderer->exit();
@@ -218,25 +193,15 @@ void Win32Window::destroy() {
     this->hwnd = nullptr;
     this->hInstance = nullptr;
 
-    instance = nullptr;
-
-    if (rendererType == Renderer::Type::OpenGL) {
-        (void)FreeLibrary(this->openGLDLL);
-        this->openGLDLL = nullptr;
-
-        glMod = nullptr;
-
-        FwglGetProcAddress = nullptr;
-        FwglCreateContext = nullptr;
-        FwglDeleteContext = nullptr;
-        FwglMakeCurrent = nullptr;
-        FwglChoosePixelFormatARB = nullptr;
-        FwglCreateContextAttribsARB = nullptr;
-    }
-    else if (rendererType == Renderer::Type::Vulkan && this->vulkanDLL != nullptr) {
+    if (rendererType == RendererType::OpenGL)
+        WF::OGL::exit();
+    else if (rendererType == RendererType::Vulkan && this->vulkanDLL != nullptr) {
         (void)FreeLibrary(this->vulkanDLL);
         this->vulkanDLL = nullptr;
     }
+
+    WF::DWM::exit();
+    WF::User32::exit();
 }
 
 void Win32Window::show() const {
@@ -258,25 +223,25 @@ void Win32Window::run() const {
         return;
 
     const auto rendererType = this->renderer->getRendererType();
-    const bool swapBuffers = rendererType == Renderer::Type::OpenGL;
+    const bool swapBuffers = rendererType == RendererType::OpenGL;
 
     double deltaTime = 0.0;
     auto start = TimeUtils::currentTimeMillis();
 
     MSG msg{};
-    while (msg.message != WM_QUIT && !requestedQuit) {
+    while (msg.message != WM_QUIT && !this->requestedQuit) {
         if (PeekMessageW(&msg, this->hwnd, 0, 0, PM_REMOVE)) {
             (void)TranslateMessage(&msg);
             (void)DispatchMessageW(&msg);
         }
 
-        if (iconified)
+        if (this->iconified)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         else {
             this->renderer->render(deltaTime);
 
             if (swapBuffers)
-                (void)SwapBuffers(this->hdc);
+                (void)WF::GDI::SwapBuffers(this->hdc);
         }
 
         const auto end = TimeUtils::currentTimeMillis();
@@ -284,10 +249,6 @@ void Win32Window::run() const {
         deltaTime = static_cast<double>(diff) / 1000.0;
         start = end;
     }
-}
-
-void Win32Window::setRenderer(const std::shared_ptr<Renderer>& renderer) {
-    this->renderer = renderer;
 }
 
 PFN_vkVoidFunction Win32Window::getVulkanInstanceFunction(VkInstance instance, const char* pName) const {
@@ -322,11 +283,11 @@ VkSurfaceKHR Win32Window::createVulkanSurface(VkInstance instance, VkAllocationC
 static void* getGLFuncAddr(const char* name) {
     void* res = nullptr;
 
-    if (FwglGetProcAddress != nullptr)
-        res = FwglGetProcAddress(name);
+    if (WF::OGL::hasGetProcAddress())
+        res = WF::OGL::wglGetProcAddress(name);
 
-    if (glMod != nullptr && res == nullptr)
-        res = GetProcAddress(glMod, name);
+    if (WF::OGL::getModule() != nullptr && res == nullptr)
+        res = GetProcAddress(WF::OGL::getModule(), name);
 
     return res;
 }
@@ -354,111 +315,45 @@ glm::ivec2 Win32Window::getWindowSize() const {
     return {w, h};
 }
 
-LRESULT WINAPI emptyCallback(HWND window, UINT msg, WPARAM wParam, LPARAM lParam) {
-    return DefWindowProcW(window, msg, wParam, lParam);
-}
+glm::ivec2 Win32Window::getAdjustedWindowSize(const int targetWidth, const int targetHeight) const {
+    const auto dpiAware = WF::User32::SetProcessDPIAware();
 
-void Win32Window::createFakeGLContext() const {
-    WNDCLASSEX wndClass{};
-    wndClass.cbSize = sizeof(WNDCLASSEX);
-    wndClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
-    wndClass.lpfnWndProc = emptyCallback;
-    wndClass.cbClsExtra = 0;
-    wndClass.cbWndExtra = 0;
-    wndClass.hInstance = this->hInstance;
-    wndClass.hIcon = LoadIconW(nullptr, IDI_WINLOGO);
-    wndClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wndClass.hbrBackground = nullptr;
-    wndClass.lpszMenuName = nullptr;
-    wndClass.lpszClassName = L"OGLFakeWindow";
-    wndClass.hIconSm = nullptr;
+    constexpr auto exStyle = WS_EX_TRANSPARENT;
+    constexpr auto style = WS_POPUP;
 
-    if (RegisterClassExW(&wndClass) == 0) {
-        const auto lastError = GetLastError();
+    RECT rect{.left = 0, .top = 0, .right = targetWidth, .bottom = targetHeight};
 
-        logF("Failed to register class: {}", lastError);
-        std::cerr << "Failed to register class: " << fmt::to_string(lastError) << std::endl;
-        std::abort();
-    }
+    if (dpiAware)
+        (void)WF::User32::AdjustWindowRectExForDpi(&rect, style, FALSE, exStyle, WF::User32::GetDpiForSystem());
+    else
+        (void)WF::User32::AdjustWindowRectEx(&rect, style, FALSE, exStyle);
 
-    const auto fakeWindow = CreateWindowExW(WS_EX_LAYERED, wndClass.lpszClassName, L"Fake Window", WS_POPUP,
-        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr, this->hInstance, nullptr);
+    const int fWidth = rect.right - rect.left;
+    const int fHeight = rect.bottom - rect.top;
 
-    const auto fakeHDC = GetDC(fakeWindow);
-
-    PIXELFORMATDESCRIPTOR pfd{};
-    pfd.nSize = sizeof(pfd);
-    pfd.nVersion = 1;
-    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 32;
-    pfd.cAlphaBits = 8;
-    pfd.cDepthBits = 24;
-
-    const auto pf = ChoosePixelFormat(fakeHDC, &pfd);
-
-    if (pf == 0) {
-        const auto lastError = GetLastError();
-
-        logF("Failed to choose pixel format: {}", lastError);
-        std::cerr << "Failed to choose pixel format: " << fmt::to_string(lastError) << std::endl;
-
-        (void)ReleaseDC(fakeWindow, fakeHDC);
-        (void)DestroyWindow(fakeWindow);
-        (void)UnregisterClassW(wndClass.lpszClassName, wndClass.hInstance);
-
-        std::abort();
-    }
-
-    if (SetPixelFormat(fakeHDC, pf, &pfd) == FALSE) {
-        const auto lastError = GetLastError();
-
-        logF("Failed to set pixel format: {}", lastError);
-        std::cerr << "Failed to set pixel format: " << fmt::to_string(lastError) << std::endl;
-
-        (void)ReleaseDC(fakeWindow, fakeHDC);
-        (void)DestroyWindow(fakeWindow);
-        (void)UnregisterClassW(wndClass.lpszClassName, wndClass.hInstance);
-
-        std::abort();
-    }
-
-    const auto fakeHGLRC = FwglCreateContext(fakeHDC);
-    (void)FwglMakeCurrent(fakeHDC, fakeHGLRC);
-
-    GET_WGL_PROC(wglChoosePixelFormatARB);
-    GET_WGL_PROC(wglCreateContextAttribsARB);
-    GET_WGL_PROC(wglSwapIntervalEXT);
-
-    (void)FwglMakeCurrent(fakeHDC, nullptr);
-    (void)FwglDeleteContext(fakeHGLRC);
-
-    (void)ReleaseDC(fakeWindow, fakeHDC);
-    (void)DestroyWindow(fakeWindow);
-    (void)UnregisterClassW(wndClass.lpszClassName, wndClass.hInstance);
-
-    if (FwglChoosePixelFormatARB == nullptr || FwglCreateContextAttribsARB == nullptr || FwglSwapIntervalEXT == nullptr) {
-        logF("Failed to load Windows OpenGL ARB functions");
-        std::cerr << "Failed to load Windows OpenGL ARB functions" << std::endl;
-        std::abort();
-    }
+    return {fWidth, fHeight};
 }
 
 static bool clicked = false;
 static POINT posDiff{};
 
 LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    const auto window = reinterpret_cast<Win32Window*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+
+    if (window == nullptr)
+        return DefWindowProcW(hwnd, msg, wParam, lParam);
+
     switch (msg) {
         case WM_SIZE: {
             if (wParam == SIZE_MINIMIZED)
-                iconified = true;
-            else if (wParam == SIZE_RESTORED)
-                iconified = false;
+                window->iconified = true;
+            else
+                window->iconified = false;
             return 0;
         }
         case WM_LBUTTONDOWN: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 0))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 0))
                     return 0;
             }
 
@@ -476,48 +371,48 @@ LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         case WM_LBUTTONUP: {
             clicked = false;
 
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 0))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 0))
                     return 0;
             }
 
             return 0;
         }
         case WM_RBUTTONDOWN: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 1))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 1))
                     return 0;
             }
 
             break;
         }
         case WM_RBUTTONUP: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 1))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 1))
                     return 0;
             }
 
             break;
         }
         case WM_MBUTTONDOWN: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 2))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onClick({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 2))
                     return 0;
             }
 
             break;
         }
         case WM_MBUTTONUP: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                if (instance->renderer->getContext()->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 2))
+            if (window->rendererContext != nullptr) {
+                if (window->rendererContext->onRelease({GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}, 2))
                     return 0;
             }
 
             break;
         }
         case WM_MOUSEMOVE: {
-            if (instance != nullptr && instance->renderer != nullptr && instance->renderer->getContext() != nullptr) {
-                const auto context = instance->renderer->getContext();
+            if (window->rendererContext != nullptr) {
+                const auto context = window->rendererContext;
 
                 const auto pos = glm::ivec2{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 
@@ -559,7 +454,7 @@ LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         }
         case WM_CLOSE:
         case WM_DESTROY: {
-            requestedQuit = true;
+            window->requestedQuit = true;
             PostQuitMessage(0);
             return 0;
         }

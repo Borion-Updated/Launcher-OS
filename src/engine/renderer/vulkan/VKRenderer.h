@@ -16,12 +16,12 @@ public:
         glm::vec4 shaderColor{};
     };
 
-    VKRenderer(HINSTANCE hInstance, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) : Renderer(hInstance, window, context) {}
+    VKRenderer(HINSTANCE hInstance, Win32Window* window, const std::shared_ptr<RendererContext>& context) : Renderer(hInstance, window, context) {}
 
     bool init() override;
     void exit() override;
     void render(double deltaTime) override;
-    Type getRendererType() override;
+    RendererType getRendererType() override;
     uint32_t loadShader(const void* vertexShaderData, size_t vertexShaderSize, const void* fragmentShaderData, size_t fragmentShaderSize, std::span<std::string> attributes) override;
     std::shared_ptr<Mesh> upload(float* vertices, uint32_t vertexCount, uint16_t* indices, uint32_t indexCount, uint8_t vertexSize, const std::bitset<VertexFormats::VertexAttribute::ATTR_COUNT>& enabledAttributes) override;
     uint32_t loadTexture(const void* textureData, size_t textureSize, uint32_t width, uint32_t height) override;

@@ -12,6 +12,10 @@ bool RendererContext::onRelease(const glm::ivec2& pos, int button) {
 
 void RendererContext::onMove(const glm::ivec2& pos, int button) {}
 
+void RendererContext::setWindow(Win32Window* window) {
+    this->window = window;
+}
+
 void RendererContext::setRenderer(const std::shared_ptr<Renderer>& renderer) {
     this->renderer = renderer;
 }

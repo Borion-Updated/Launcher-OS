@@ -2,7 +2,7 @@
 
 class RendererContext {
 public:
-    RendererContext(HINSTANCE hInstance, const std::shared_ptr<class Win32Window>& window) : hInstance(hInstance), window(window) {}
+    explicit RendererContext(HINSTANCE hInstance) : hInstance(hInstance) {}
 
     virtual ~RendererContext() = default;
     virtual void init() = 0;
@@ -12,11 +12,11 @@ public:
     virtual bool onRelease(const glm::ivec2& pos, int button);
     virtual void onMove(const glm::ivec2& pos, int button);
 
+    void setWindow(class Win32Window* window);
     void setRenderer(const std::shared_ptr<class Renderer>& renderer);
 
 protected:
     HINSTANCE hInstance{};
-
-    std::shared_ptr<Win32Window> window{};
+    Win32Window* window{};
     std::shared_ptr<Renderer> renderer{};
 };

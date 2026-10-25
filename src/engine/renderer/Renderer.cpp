@@ -5,11 +5,11 @@
 #include "utils/stb_image.h"
 #include "vulkan/VKRenderer.h"
 
-std::shared_ptr<Renderer> Renderer::create(HINSTANCE hInstance, const Type type, const std::shared_ptr<Win32Window>& window, const std::shared_ptr<RendererContext>& context) {
+std::shared_ptr<Renderer> Renderer::create(HINSTANCE hInstance, const RendererType type, Win32Window* window, const std::shared_ptr<RendererContext>& context) {
     switch (type) {
-    case Type::OpenGL:
+    case RendererType::OpenGL:
         return std::make_shared<OGLRenderer>(hInstance, window, context);
-    case Type::Vulkan:
+    case RendererType::Vulkan:
         return std::make_shared<VKRenderer>(hInstance, window, context);
     default:
         std::cerr << "Reached impossible case" << std::endl;
@@ -49,10 +49,6 @@ uint32_t Renderer::loadTexture(const void* imageData, const size_t imageSize, ui
     stbi_image_free(data);
 
     return id;
-}
-
-std::shared_ptr<RendererContext> Renderer::getContext() {
-    return this->context;
 }
 
 std::shared_ptr<Tessellator> Renderer::getTessellator() {

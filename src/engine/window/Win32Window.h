@@ -1,18 +1,22 @@
 #pragma once
 
+#include "../renderer/RendererType.h"
+#include "../renderer/api/RendererContext.h"
+
 class Win32Window {
 public:
-    explicit Win32Window(const std::string& name);
+    explicit Win32Window(const std::wstring& name);
 
-    bool create(HINSTANCE hInstance);
+    bool execute(HINSTANCE hInstance, const std::shared_ptr<RendererContext>& rendererContext);
+
+    bool create(HINSTANCE hInstance, RendererType rendererType, const std::shared_ptr<RendererContext>& rendererContext);
+    bool create(HINSTANCE hInstance, const std::shared_ptr<Renderer>& renderer, const std::shared_ptr<RendererContext>& rendererContext);
     void destroy();
 
     void show() const;
     void hide() const;
 
     void run() const;
-
-    void setRenderer(const std::shared_ptr<class Renderer>& renderer);
 
     PFN_vkVoidFunction getVulkanInstanceFunction(VkInstance instance, const char* pName) const;
     PFN_vkVoidFunction getVulkanInstanceFunctionKHR(const char* pName) const;
@@ -30,6 +34,7 @@ public:
 private:
     std::wstring wname{};
     std::shared_ptr<Renderer> renderer{};
+    std::shared_ptr<RendererContext> rendererContext{};
     HWND hwnd{};
     HINSTANCE hInstance{};
     HMODULE vulkanDLL{};
@@ -37,8 +42,10 @@ private:
     HDC hdc{};
     HGLRC hglrc{};
     WNDCLASSEXW windowClass{};
+    bool iconified{};
+    bool requestedQuit{};
 
-    void createFakeGLContext() const;
+    [[nodiscard]] glm::ivec2 getAdjustedWindowSize(int targetWidth, int targetHeight) const;
 
     static LRESULT WINAPI windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 };

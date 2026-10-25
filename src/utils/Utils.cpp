@@ -65,6 +65,16 @@ std::string Utils::readBin(const std::wstring& path) {
     return result.str();
 }
 
+void Utils::writeBin(const std::wstring& path, const void* data, const size_t size) {
+    std::ofstream file{};
+    file.open(path, std::ios::out | std::ios::binary);
+
+    if (!file.is_open())
+        return;
+
+    file.write(static_cast<const char*>(data), size);
+}
+
 void Utils::createFile(const std::wstring& path) {
     FILE* f;
     _wfopen_s(&f, path.c_str(), L"w");

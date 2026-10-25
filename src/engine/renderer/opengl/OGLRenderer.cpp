@@ -2,6 +2,7 @@
 
 #include "../../../utils/Logger.h"
 #include "../../../utils/Utils.h"
+#include "../../window/Win32Window.h"
 #include "tessellation/Mesh.h"
 #include "texture/TextureUtil.h"
 
@@ -51,8 +52,8 @@ void OGLRenderer::render(const double deltaTime) {
     this->stack.reset();
 }
 
-Renderer::Type OGLRenderer::getRendererType() {
-    return Type::OpenGL;
+RendererType OGLRenderer::getRendererType() {
+    return RendererType::OpenGL;
 }
 
 uint32_t OGLRenderer::loadShader(const void* vertexShaderData, const size_t vertexShaderSize, const void* fragmentShaderData, const size_t fragmentShaderSize, const std::span<std::string> attributes) {
