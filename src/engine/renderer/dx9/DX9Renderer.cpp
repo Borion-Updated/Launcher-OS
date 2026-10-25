@@ -15,7 +15,7 @@ bool DX9Renderer::init() {
 
     this->createContext();
 
-    if (this->context == nullptr)
+    if (this->dxcontext == nullptr)
         return false;
 
     this->createDevice();
@@ -170,30 +170,30 @@ uint32_t DX9Renderer::loadTexture(const void* textureData, size_t textureSize, u
     return id;
 }
 
-LPDIRECT3DVERTEXBUFFER9 DX9Renderer::allocateVertexBuffer(const UINT length, const DWORD fvf, const D3DPOOL pool) const {
+LPDIRECT3DVERTEXBUFFER9 DX9Renderer::allocateVertexBuffer(const UINT length, const DWORD fvf) const {
     if (length == 0)
         return nullptr;
 
     LPDIRECT3DVERTEXBUFFER9 buf{};
-    DX_CHECK(this->device->CreateVertexBuffer, length, 0, fvf, pool, &buf, nullptr);
+    DX_CHECK(this->device->CreateVertexBuffer, length, 0, fvf, this->pool, &buf, nullptr);
     return buf;
 }
 
-LPDIRECT3DINDEXBUFFER9 DX9Renderer::allocateIndexBuffer(const UINT length, const D3DPOOL pool) const {
+LPDIRECT3DINDEXBUFFER9 DX9Renderer::allocateIndexBuffer(const UINT length) const {
     if (length == 0)
         return nullptr;
 
     LPDIRECT3DINDEXBUFFER9 buf{};
-    DX_CHECK(this->device->CreateIndexBuffer, length, 0, D3DFMT_INDEX16, pool, &buf, nullptr);
+    DX_CHECK(this->device->CreateIndexBuffer, length, 0, D3DFMT_INDEX16, this->pool, &buf, nullptr);
     return buf;
 }
 
-LPDIRECT3DTEXTURE9 DX9Renderer::allocateTexture(const UINT width, const UINT height, const UINT levels, const D3DFORMAT format, const D3DPOOL pool) const {
+LPDIRECT3DTEXTURE9 DX9Renderer::allocateTexture(const UINT width, const UINT height, const UINT levels, const D3DFORMAT format) const {
     if (width == 0 || height == 0 || levels == 0)
         return nullptr;
 
     LPDIRECT3DTEXTURE9 buf{};
-    DX_CHECK(this->device->CreateTexture, width, height, levels, 0, format, pool, &buf, nullptr);
+    DX_CHECK(this->device->CreateTexture, width, height, levels, 0, format, this->pool, &buf, nullptr);
     return buf;
 }
 
@@ -225,7 +225,22 @@ void DX9Renderer::createDevice() {
     params.FullScreen_RefreshRateInHz = 0;
     params.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 
-    DX_CHECK(this->dxcontext->CreateDevice, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &this->device);
+    auto res = this->dxcontext->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &this->device);
+
+    if (FAILED(res)) {
+        res = this->dxcontext->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &params, &this->device);
+
+        if (FAILED(res)) {
+            res = this->dxcontext->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_REF, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &params, &this->device);
+
+            this->pool = D3DPOOL_SYSTEMMEM;
+        }
+    }
+
+    if (this->device == nullptr) {
+        std::cerr << "Failed to create Direct3D 9 device" << std::endl;
+        return;
+    }
 
     DX_CHECK(this->device->SetRenderState, D3DRS_FILLMODE, D3DFILL_SOLID);
     DX_CHECK(this->device->SetRenderState, D3DRS_ZWRITEENABLE, TRUE);

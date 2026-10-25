@@ -25,9 +25,9 @@ public:
     void draw(std::shared_ptr<Mesh> mesh) override;
     void draw(std::shared_ptr<Mesh> mesh, uint32_t texId) override;
 
-    [[nodiscard]] LPDIRECT3DVERTEXBUFFER9 allocateVertexBuffer(UINT length, DWORD fvf, D3DPOOL pool = D3DPOOL_MANAGED) const;
-    [[nodiscard]] LPDIRECT3DINDEXBUFFER9 allocateIndexBuffer(UINT length, D3DPOOL pool = D3DPOOL_MANAGED) const;
-    [[nodiscard]] LPDIRECT3DTEXTURE9 allocateTexture(UINT width, UINT height, UINT levels = 1, D3DFORMAT format = D3DFMT_A8R8G8B8, D3DPOOL pool = D3DPOOL_MANAGED) const;
+    [[nodiscard]] LPDIRECT3DVERTEXBUFFER9 allocateVertexBuffer(UINT length, DWORD fvf) const;
+    [[nodiscard]] LPDIRECT3DINDEXBUFFER9 allocateIndexBuffer(UINT length) const;
+    [[nodiscard]] LPDIRECT3DTEXTURE9 allocateTexture(UINT width, UINT height, UINT levels = 1, D3DFORMAT format = D3DFMT_A8R8G8B8) const;
 
 private:
     LPDIRECT3D9 dxcontext{};
@@ -41,6 +41,8 @@ private:
     std::array<uint16_t, 4> defaultShaders{};
     std::vector<DX9::Shader> shaders{};
     uint16_t defaultFontShader{};
+
+    D3DPOOL pool = D3DPOOL_MANAGED;
 
     void createContext();
     void destroyContext() const;
