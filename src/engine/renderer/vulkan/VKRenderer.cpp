@@ -48,6 +48,10 @@ bool VKRenderer::init() {
     const auto size = this->window->getWindowSize();
 
     this->initSwapchain(size.x, size.y);
+
+    if (this->swapchain == VK_NULL_HANDLE)
+        return false;
+
     this->initMatrices();
     this->allocateBackBuffer();
     this->initDescriptors();
@@ -563,6 +567,9 @@ void VKRenderer::initSwapchain(const uint32_t width, const uint32_t height) {
     info.clipped = VK_TRUE;
 
     VK_CHECK(vkCreateSwapchainKHR, this->device, &info, nullptr, &this->swapchain);
+
+    if (this->swapchain == VK_NULL_HANDLE)
+        return;
 
     uint32_t swapchainImageCount = 0;
     VK_CHECK_N(1, vkGetSwapchainImagesKHR, this->device, this->swapchain, &swapchainImageCount, nullptr);
