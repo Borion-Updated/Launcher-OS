@@ -53,6 +53,7 @@ foreach(GLSL ${VK_GLSL_SOURCE_FILES})
     add_custom_command(
             OUTPUT ${SPIRV}
             COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             DEPENDS ${GLSL})
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
@@ -61,6 +62,8 @@ add_custom_target(
         VK_Shaders
         DEPENDS ${SPIRV_BINARY_FILES}
 )
+
+add_dependencies(BorionLauncher VK_Shaders)
 
 if(NOT IGNORE_DXBC)
 file(GLOB_RECURSE DX9_HLSL_FRAG_FILES "resources/shaders/dx9/*.frag.hlsl")
