@@ -1,12 +1,15 @@
 #include "Renderer.h"
 
 #include "../../utils/Logger.h"
+#include "dx9/DX9Renderer.h"
 #include "opengl/OGLRenderer.h"
 #include "utils/stb_image.h"
 #include "vulkan/VKRenderer.h"
 
 std::shared_ptr<Renderer> Renderer::create(HINSTANCE hInstance, const RendererType type, Win32Window* window, const std::shared_ptr<RendererContext>& context) {
     switch (type) {
+    case RendererType::DirectX9:
+        return std::make_shared<DX9Renderer>(hInstance, window, context);
     case RendererType::OpenGL:
         return std::make_shared<OGLRenderer>(hInstance, window, context);
     case RendererType::Vulkan:

@@ -365,8 +365,8 @@ LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             POINT pos{};
             (void)GetCursorPos(&pos);
 
-            posDiff = {pos.x - rect.left, pos.y - rect.top};
-            return 0;
+            posDiff = {.x = pos.x - rect.left, .y = pos.y - rect.top};
+            break;
         }
         case WM_LBUTTONUP: {
             clicked = false;
@@ -376,7 +376,7 @@ LRESULT WINAPI Win32Window::windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
                     return 0;
             }
 
-            return 0;
+            break;
         }
         case WM_RBUTTONDOWN: {
             if (window->rendererContext != nullptr) {

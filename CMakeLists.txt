@@ -3,6 +3,8 @@ project(BorionLauncher)
 
 set(CMAKE_CXX_STANDARD 23)
 
+option(IGNORE_DXBC "Don't compile DirectX 9 shaders" OFF)
+
 find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE PROJ_SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.h")
@@ -37,7 +39,7 @@ if(MSVC)
     enable_language(RC)
 endif()
 
-find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
+find_program(GLSL_VALIDATOR glslangValidator HINTS $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 file(GLOB_RECURSE VK_GLSL_SOURCE_FILES
         "resources/shaders/vulkan/*.frag"
@@ -59,3 +61,45 @@ add_custom_target(
         VK_Shaders
         DEPENDS ${SPIRV_BINARY_FILES}
 )
+
+if(NOT IGNORE_DXBC)
+file(GLOB_RECURSE DX9_HLSL_FRAG_FILES "resources/shaders/dx9/*.frag.hlsl")
+
+foreach(HLSL ${DX9_HLSL_FRAG_FILES})
+    get_filename_component(FILE_NAME ${HLSL} NAME)
+    get_filename_component(RAW_NAME ${HLSL} NAME_WLE)
+    set(DXBC "resources/shaders/dx9/${RAW_NAME}.dxbc")
+    add_custom_command(
+            OUTPUT ${DXBC}
+            COMMAND $<SHELL_PATH:${CMAKE_SOURCE_DIR}/DX9BCCreator.exe> ${HLSL} ${DXBC} "ps_2_0"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            DEPENDS ${HLSL})
+    list(APPEND DX9_FRAG_BINARY_FILES ${DXBC})
+endforeach(HLSL)
+
+add_custom_target(
+        DX9_Frag_Shaders
+        DEPENDS ${DX9_FRAG_BINARY_FILES}
+)
+
+file(GLOB_RECURSE DX9_HLSL_VERT_FILES "resources/shaders/dx9/*.vert.hlsl")
+
+foreach(HLSL ${DX9_HLSL_VERT_FILES})
+    get_filename_component(FILE_NAME ${HLSL} NAME)
+    get_filename_component(RAW_NAME ${HLSL} NAME_WLE)
+    set(DXBC "resources/shaders/dx9/${RAW_NAME}.dxbc")
+    add_custom_command(
+            OUTPUT ${DXBC}
+            COMMAND $<SHELL_PATH:${CMAKE_SOURCE_DIR}/DX9BCCreator.exe> ${HLSL} ${DXBC} "vs_2_0"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            DEPENDS ${HLSL})
+    list(APPEND DX9_VERT_BINARY_FILES ${DXBC})
+endforeach(HLSL)
+
+add_custom_target(
+        DX9_Vert_Shaders
+        DEPENDS ${DX9_VERT_BINARY_FILES}
+)
+
+add_dependencies(BorionLauncher DX9_Vert_Shaders DX9_Frag_Shaders)
+endif()
