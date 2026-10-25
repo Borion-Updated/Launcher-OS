@@ -562,7 +562,7 @@ void VKRenderer::initSwapchain(const uint32_t width, const uint32_t height) {
     info.queueFamilyIndexCount = 0;
     info.pQueueFamilyIndices = nullptr;
     info.preTransform = capabilities.currentTransform;
-    info.compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    info.compositeAlpha = (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) != 0 ? VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR : VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     info.presentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
     info.clipped = VK_TRUE;
 
