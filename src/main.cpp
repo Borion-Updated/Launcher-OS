@@ -18,7 +18,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     const auto context = std::make_shared<BorionContext>(hInstance);
 
     if (!window->execute(hInstance, context))
-        logF("Failed to create Vulkan and OpenGL contexts");
+        logF("Failed to create Vulkan, OpenGL and DirectX 9 contexts");
 
     CoUninitialize();
 
