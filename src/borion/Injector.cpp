@@ -3,6 +3,65 @@
 #include "../utils/Logger.h"
 #include "../utils/Utils.h"
 
+DWORD Injector::launchMinecraft() {
+    HRESULT hr;
+    DWORD pid;
+
+    // CreateProcess does not work on Store apps
+    // https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iapplicationactivationmanager
+    IApplicationActivationManager* pAAM = nullptr;
+
+    // alr i hate com but whatever
+    hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
+    BOOL comInitSuccess = SUCCEEDED(hr);
+
+    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
+        logF("Failed to initialise COM");
+        goto failed;
+    }
+
+    hr = CoCreateInstance(CLSID_ApplicationActivationManager, NULL, CLSCTX_LOCAL_SERVER, IID_IApplicationActivationManager, (void**)&pAAM);
+
+    if (FAILED(hr)) {
+        if (comInitSuccess) {
+            CoUninitialize();
+        }
+
+        logF("Failed to create an instance of ApplicationActivationManager");
+        goto failed;
+    }
+
+    // rip ansi strings
+    hr = pAAM->ActivateApplication(L"Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game",  // seems that Minecraft still uses the old UWP AUMID...
+                                   NULL, AO_NONE, &pid);
+
+    pAAM->Release();
+    pAAM = NULL;
+
+    if (comInitSuccess) {
+        CoUninitialize();
+    }
+
+    if (FAILED(hr)) {
+        logF("Failed to activate application");
+        goto failed;
+    }
+
+    // fine i'm lazy but that is the spirit of this project lmao
+    while (FindWindowA(NULL, "Minecraft") == NULL) {
+        Sleep(100);
+    }
+    // for some reason the game needs a bit of extra time ig...
+    Sleep(3000);
+
+    return pid;
+
+failed:
+    MessageBoxA(nullptr, "See logs for more info", "Cannot launch Minecraft", MB_OK);
+    return 0;
+}
+
 bool Injector::downloadDLL() {
     const auto versionData = Utils::requestString("https://raw.githubusercontent.com/Borion-Updated/Releases/refs/heads/master/data.txt");
 
@@ -77,29 +136,10 @@ void Injector::inject(const std::wstring& path) {
         return;
     }
 
-    DWORD procId = 0;
-    const auto hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-    if (hSnap != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32W entry;
-        entry.dwSize = sizeof(PROCESSENTRY32W);
-
-        if (Process32FirstW(hSnap, &entry)) {
-            do {
-                if (!_wcsicmp(entry.szExeFile, L"Minecraft.Windows.exe")) {
-                    procId = entry.th32ProcessID;
-                    break;
-                }
-            }
-            while (Process32NextW(hSnap, &entry));
-        }
-    }
-
-    (void)CloseHandle(hSnap);
+    // have fun!
+    DWORD procId = launchMinecraft();
 
     if (procId == 0) {
-        logF("Minecraft not running");
-        (void)MessageBoxA(nullptr, "Please start Minecraft (couldn't bother to start it myself)", "Minecraft not running", MB_OK);
         return;
     }
 
